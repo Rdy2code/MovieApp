@@ -8,4 +8,4 @@
 /build
 /captures
 .externalNativeBuild
-/apikey.properties
+/key.properties
