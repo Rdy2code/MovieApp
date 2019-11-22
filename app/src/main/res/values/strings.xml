@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">MovieAppStage1</string>
+    <string name="error_message">Network Error. Check internet connection.</string>
+    <string name="title">Title:</string>
+    <string name="release_date">Release Date:</string>
+    <string name="vote_average">Vote Average:</string>
+    <string name="overview">Overview:</string>
+    <string name="popular">Popular Movies</string>
+    <string name="rating">Highly Rated Movies</string>
+    <string name="favorites">Favorites</string>
+    <string name="play_trailer">Play Trailer</string>
+    <string name="favorite">Favorite</string>
+    <string name="image_content_description">Image of Movie Poster</string>
+    <string name="show_favorite_text">Favorite</string>
+    <string name="show_unfavorite_text">Unfavorite</string>
+    <string name="not_available">Not Available</string>
+</resources>
