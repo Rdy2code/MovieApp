@@ -2,6 +2,8 @@ package com.example.android.movieappstage1.utilities;
 
 import android.net.Uri;
 
+import com.example.android.movieappstage1.BuildConfig;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -27,7 +29,7 @@ public class NetworkUtils {
 
 
     //TODO:Insert your theMovieDB API Key here
-    private final static String API_KEY = "";
+    private final static String API_KEY = BuildConfig.KEY;
 
     private NetworkUtils() {
     }
