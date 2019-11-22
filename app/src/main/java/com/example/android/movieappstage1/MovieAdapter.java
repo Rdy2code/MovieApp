@@ -28,7 +28,6 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
     public List<MovieObject> mMovieData;
     private LayoutInflater mInflater;
     private Context mContext;
-    private ProgressBar mProgressBar = MainActivity.mProgressBar;
 
     //Nested interface for binding listeners to poster image items on the Main UI
     public interface ListItemClickListener {
@@ -62,12 +61,10 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
 
                 @Override
                 public void onSuccess() {
-                    mProgressBar.setVisibility(View.INVISIBLE);
                 }
 
                 @Override
                 public void onError() {
-                    mProgressBar.setVisibility(View.INVISIBLE);
                     Toast.makeText(mContext, R.string.error_message, Toast.LENGTH_LONG);
                 }
             });

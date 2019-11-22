@@ -5,7 +5,6 @@ package com.example.android.movieappstage1;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -16,6 +15,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -38,11 +38,10 @@ public class MainActivity extends AppCompatActivity implements
     private RecyclerView mRecyclerView;
     private MovieAdapter mAdapter;
     private TextView mErrorMessageTextView;
-    public static ProgressBar mProgressBar;
+    public ProgressBar mProgressBar;
     public List<MovieObject> movieObjects;
-    private int selectedItem = -1;
+    private int selectedItem = 1;
     private final static String USER_SELECTION = "selection";
-    private GridLayoutManager layoutManager;
     private static final int MOVIE_SEARCH_LOADER = 22;
     private static final String SEARCH_QUERY_URL_EXTRA = "query";
 
@@ -51,15 +50,15 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mErrorMessageTextView = (TextView) findViewById(R.id.error_message);
+        mErrorMessageTextView = findViewById(R.id.error_message);
 
-        mProgressBar = (ProgressBar) findViewById(R.id.progress_bar);
+        mProgressBar = findViewById(R.id.progress_bar);
 
-        mRecyclerView = (RecyclerView) findViewById(R.id.movie_poster_iv);
+        mRecyclerView = findViewById(R.id.movie_poster_iv);
 
         //TODO:Improve layout for landscape orientation
 
-        layoutManager = new GridLayoutManager(this, 3);
+        GridLayoutManager layoutManager = new GridLayoutManager(this, 3);
 
         mRecyclerView.setLayoutManager(layoutManager);
 
@@ -78,6 +77,65 @@ public class MainActivity extends AppCompatActivity implements
         } else {
             fetchMovieData(NetworkUtils.MOST_POPULAR);
             setTitle(R.string.popular);
+        }
+    }
+
+    public static class MovieLoader extends AsyncTaskLoader<String> {
+
+        Bundle mBundle;
+        private WeakReference<MainActivity> activityWeakReference;
+
+        private MovieLoader(MainActivity context, Bundle bundle) {
+            super(context);
+            mBundle = bundle;
+            activityWeakReference = new WeakReference<>(context);
+        }
+
+        String movieJsonResponse;
+
+        @Override
+        protected void onStartLoading() {
+            super.onStartLoading();
+
+            MainActivity activity = activityWeakReference.get();
+            if (activity == null || activity.isFinishing()) {
+                return;
+            }
+
+            if (mBundle == null) {
+                return;
+            }
+
+            //To avoid duplicate loads, cache and deliver the result
+            if (movieJsonResponse != null) {
+                deliverResult(movieJsonResponse);
+            } else {
+                activity.mProgressBar.setVisibility(View.VISIBLE);
+                forceLoad();
+            }
+        }
+
+        @Override
+        public void deliverResult(@Nullable String data) {
+            movieJsonResponse = data;
+            super.deliverResult(data);
+        }
+
+        @Nullable
+        @Override
+        public String loadInBackground() {
+            String queryUrlString = mBundle.getString(SEARCH_QUERY_URL_EXTRA);
+            if (queryUrlString == null || TextUtils.isEmpty(queryUrlString)) {
+                return null;
+            }
+            try {
+                URL url = new URL(queryUrlString);
+                return NetworkUtils.getURLResponse(url);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
         }
     }
 
@@ -126,122 +184,28 @@ public class MainActivity extends AppCompatActivity implements
     @NonNull
     @Override
     public Loader<String> onCreateLoader(int i, @Nullable final Bundle bundle) {
-        return new AsyncTaskLoader<String>(this) {
 
-            String movieJsonResponse;
-
-            @Override
-            protected void onStartLoading() {
-                super.onStartLoading();
-                if (bundle == null) {
-                    return;
-                }
-
-                //To avoid duplicate loads, cache and deliver the result
-                if (movieJsonResponse != null) {
-                    deliverResult(movieJsonResponse);
-                } else {
-                    mProgressBar.setVisibility(View.VISIBLE);
-                    forceLoad();
-                }
-            }
-
-            @Override
-            public void deliverResult(@Nullable String data) {
-                movieJsonResponse = data;
-                super.deliverResult(data);
-            }
-
-            @Nullable
-            @Override
-            public String loadInBackground() {
-                String queryUrlString = bundle.getString(SEARCH_QUERY_URL_EXTRA);
-                if (queryUrlString == null || TextUtils.isEmpty(queryUrlString)) {
-                    return null;
-                }
-                try {
-                    URL url = new URL(queryUrlString);
-                    return NetworkUtils.getURLResponse(url);
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            }
-        };
+        return new MovieLoader(this, bundle);
     }
 
     @Override
     public void onLoadFinished(@NonNull Loader<String> loader, String movieJson) {
+        Log.d("MainActivity", "onLoadFinished called");
         mProgressBar.setVisibility(View.INVISIBLE);
         if (movieJson != null && !movieJson.equals("")) {
+            Log.d("MainActivity", "json is not null");
             showMovieData();
             movieObjects = JsonUtils.extractFeatureFromJson(movieJson);
             mAdapter.setMovieData(movieObjects);
         } else {
+            Log.d ("MainActivity", "json is indeed null");
             showErrorMessage();
         }
     }
 
     @Override
-    public void onLoaderReset(@NonNull Loader<String> loader) {
-
+    public void onLoaderReset(@NonNull Loader<String> loader){
     }
-
-    //Run the network request to the Movie Db server on a background thread using AsyncTask
-    //To prevent memory leaks, make the inner AsyncTask class static.
-//    private static class FetchMovieTask extends AsyncTask<URL, Void, String> {
-//
-//        //Use a weak reference to the Activity to gain access to the member variables and methods
-//        private WeakReference<MainActivity> activityWeakReference;
-//
-//        //Retain only a weak reference to the Activity
-//        FetchMovieTask(MainActivity context) {
-//            activityWeakReference = new WeakReference<>(context);
-//        }
-//
-//        @Override
-//        protected void onPreExecute() {
-//            super.onPreExecute();
-//            mProgressBar.setVisibility(View.VISIBLE);
-//        }
-//
-//        @Override
-//        protected String doInBackground(URL... Urls) {
-//            if (Urls.length == 0) {
-//                return null;
-//            }
-//
-//            URL movieRequestUrl = Urls[0];
-//            String movieJson = "";
-//
-//            try {
-//                movieJson = NetworkUtils.getURLResponse(movieRequestUrl);
-//
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            return movieJson;
-//        }
-//
-//        @Override
-//        protected void onPostExecute(String movieJson) {
-//
-//            MainActivity activity = activityWeakReference.get();
-//            if (activity == null || activity.isFinishing()) {
-//                return;
-//            }
-//
-//            mProgressBar.setVisibility(View.INVISIBLE);
-//            if (movieJson != null && !movieJson.equals("")) {
-//                activity.showMovieData();
-//                activity.movieObjects = JsonUtils.extractFeatureFromJson(movieJson);
-//                activity.mAdapter.setMovieData(activity.movieObjects);
-//            } else {
-//                activity.showErrorMessage();
-//            }
-//        }
-//    }
 
     //Create menu with options for selecting lists of movies
     @Override
