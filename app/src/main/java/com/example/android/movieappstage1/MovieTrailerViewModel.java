@@ -14,11 +14,15 @@ import com.example.android.movieappstage1.utilities.NetworkUtils;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.List;
 
 public class MovieTrailerViewModel extends AndroidViewModel {
 
     private final MutableLiveData<Uri> mYoutubeKey =
             new MutableLiveData<Uri>();
+
+    private final MutableLiveData<List<MovieObject>> mMovieReviewsObjectList =
+            new MutableLiveData<List<MovieObject>>();
 
     public MovieTrailerViewModel(@NonNull Application application) {
         super(application);
@@ -27,6 +31,11 @@ public class MovieTrailerViewModel extends AndroidViewModel {
     public LiveData<Uri> getMovieTrailer (URL url) {
         loadData(url);
         return mYoutubeKey;
+    }
+
+    public LiveData<List<MovieObject>> getMovieReview(Integer movieIdNumber) {
+        loadMovieReviews(movieIdNumber);
+        return mMovieReviewsObjectList;
     }
 
     @SuppressLint("StaticFieldLeak")
@@ -63,5 +72,36 @@ public class MovieTrailerViewModel extends AndroidViewModel {
                 }
             }
         }.execute(url);
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    private void loadMovieReviews (Integer movieNumber) {
+        new AsyncTask<Integer, Void, String>() {
+
+            @Override
+            protected String doInBackground(Integer... movieIds) {
+
+                //Build the URL that will fetch the reviews JSON
+                String reviewsJson = "";
+                URL reviewsUrl = NetworkUtils.buildReviewsUrl(movieIds[0]);
+
+                try {
+                    reviewsJson = NetworkUtils.getURLResponse(reviewsUrl);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                return reviewsJson;
+            }
+
+            @Override
+            protected void onPostExecute(String reviewsJson) {
+
+                if (reviewsJson != null && !reviewsJson.equals("")){
+                    //Initialize the List<MovieObject> to the Movie Object holding the author and content fields
+                    mMovieReviewsObjectList.setValue(JsonUtils.extractMovieReviews(reviewsJson));
+                }
+            }
+        }.execute(movieNumber);
     }
 }

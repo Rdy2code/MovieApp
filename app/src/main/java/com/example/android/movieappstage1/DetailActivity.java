@@ -10,7 +10,6 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -35,7 +34,7 @@ public class DetailActivity extends AppCompatActivity {
     private TextView mOverview;
     private int mMovieId;
     private String mYoutubeKey;
-    private List<MovieObject> mMovieReviewsObject;
+    private List<MovieObject> mMovieReviewsObjectList;
     private MovieReviewAdapter mReviewsAdapter;
     private RecyclerView mRecyclerView;
     private MovieObject mMovieObject;
@@ -54,10 +53,16 @@ public class DetailActivity extends AppCompatActivity {
     // Extra for the Movie ID to be received in the intent
     public static final String STATUS = "favoriteStatus";
 
+    //LiveData instance variable
+    MovieTrailerViewModel movieTrailerViewModel;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
+
+        movieTrailerViewModel = ViewModelProviders.of(this)
+                .get(MovieTrailerViewModel.class);
 
         mPoster = (ImageView) findViewById(R.id.detail_image_view);
         mTitle = (TextView) findViewById(R.id.movie_title);
@@ -112,7 +117,20 @@ public class DetailActivity extends AppCompatActivity {
             mRecyclerView.setHasFixedSize(true);
 
             //Load movie reviews into UI
-            new ReviewsTask().execute(mMovieId);
+            movieTrailerViewModel.getMovieReview(mMovieId).observe(
+                this, new Observer<List<MovieObject>>() {
+                    @Override
+                    public void onChanged(@Nullable List<MovieObject> movieObjects) {
+                        if (movieObjects != null) {
+                            //Initialize the MovieReviewAdapter with the List<MovieObject> author and content data
+                            mReviewsAdapter = new MovieReviewAdapter(getApplicationContext(), movieObjects);
+
+                            //Attach the adapter to the RecyclerView
+                            mRecyclerView.setAdapter(mReviewsAdapter);
+                        }
+                    }
+                }
+            );
         }
     }
 
@@ -124,8 +142,7 @@ public class DetailActivity extends AppCompatActivity {
     public void playTrailer(View view) {
 
         URL videoRequestUrl = NetworkUtils.buildTrailerUrl(mMovieId);
-        MovieTrailerViewModel movieTrailerViewModel = ViewModelProviders.of(this)
-                .get(MovieTrailerViewModel.class);
+
         movieTrailerViewModel.getMovieTrailer(videoRequestUrl).observe(
             this, new Observer<Uri>() {
                 @Override
@@ -213,40 +230,5 @@ public class DetailActivity extends AppCompatActivity {
                 mDb.movieDao().deleteMovie(mMovieObject);
             }
         });
-    }
-
-    /**
-     * Retrieve movie reviews
-     */
-    private class ReviewsTask extends AsyncTask<Integer, Void, String> {
-
-        @Override
-        protected String doInBackground(Integer... ints) {
-
-            //Build the URL that will fetch the reviews JSON
-            String reviewsJson = "";
-            URL reviewsUrl = NetworkUtils.buildReviewsUrl(ints[0]);
-
-            try {
-                reviewsJson = NetworkUtils.getURLResponse(reviewsUrl);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return reviewsJson;
-        }
-
-        @Override
-        protected void onPostExecute(String reviewsJson) {
-
-            //Initialize the List<MovieObject> to the Movie Object holding the author and content fields
-            mMovieReviewsObject = JsonUtils.extractMovieReviews(reviewsJson);
-
-            //Initialize the MovieReviewAdapter with the List<MovieObject> author and content data
-            mReviewsAdapter = new MovieReviewAdapter(getApplicationContext(), mMovieReviewsObject);
-
-            //Attach the adapter to the RecyclerView
-            mRecyclerView.setAdapter(mReviewsAdapter);
-        }
     }
 }

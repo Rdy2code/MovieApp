@@ -71,7 +71,7 @@ public class MovieObject implements Parcelable {
     }
 
     @Ignore
-    //Constructor
+    //Constructor for movie reviews
     public MovieObject (String author, String content) {
 
         //Initialize the member variables to the values passed into the constructor
