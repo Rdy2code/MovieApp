@@ -118,14 +118,28 @@ public class DetailActivity extends AppCompatActivity {
 
     /**
      * This method triggered when the user clicks on "Play Trailer" button in DetailActivity UI
+     * Fetch the Video Trailers JSON from the TheMovieDatabase on a background thread, extract the
+     * YouTube key(s),and fetch the video from YouTube
      */
     public void playTrailer(View view) {
 
-        //Build the URL that will fetch the JSON that contains the ID numbers corresponding to the
-        //Movie Trailer video(s) in YouTube.
         URL videoRequestUrl = NetworkUtils.buildTrailerUrl(mMovieId);
-        new DetailActivity.MovieTrailerTask().execute(videoRequestUrl);
-
+        MovieTrailerViewModel movieTrailerViewModel = ViewModelProviders.of(this)
+                .get(MovieTrailerViewModel.class);
+        movieTrailerViewModel.getMovieTrailer(videoRequestUrl).observe(
+            this, new Observer<Uri>() {
+                @Override
+                public void onChanged(@Nullable Uri uri) {
+                    if (uri != null) {
+                        Intent videoIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        // Verify that the intent will resolve to an activity
+                        if (videoIntent.resolveActivity(getPackageManager()) != null) {
+                            startActivity(videoIntent);
+                        }
+                    }
+                }
+            }
+        );
     }
 
     //Determine if the movie is in the database and set the button text accordingly
@@ -199,47 +213,6 @@ public class DetailActivity extends AppCompatActivity {
                 mDb.movieDao().deleteMovie(mMovieObject);
             }
         });
-    }
-
-    /**
-     * Fetch the Video Trailers JSON from the TheMovieDatabase on a background thread, extract the
-     * YouTube key(s),and fetch the video from YouTube
-     */
-    private class MovieTrailerTask extends AsyncTask<URL, Void, String> {
-
-        @Override
-        protected String doInBackground(URL... Urls) {
-            if (Urls.length == 0) {
-                return null;
-            }
-
-            try {
-                String videoJson = NetworkUtils.getURLResponse(Urls[0]);
-                mYoutubeKey = JsonUtils.extractYouTubeId(videoJson);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return mYoutubeKey;
-        }
-
-        /**
-         * Open the YouTube web page and play the trailer
-         */
-        @Override
-        protected void onPostExecute(String youtubeKey) {
-            Uri builtUri = Uri.parse(NetworkUtils.YOUTUBE_API_BASE_URL).buildUpon()
-                    .appendEncodedPath(String.valueOf(youtubeKey))
-                    .build();
-
-            Intent videoIntent = new Intent(Intent.ACTION_VIEW, builtUri);
-
-            // Verify that the intent will resolve to an activity
-            if (videoIntent.resolveActivity(getPackageManager()) != null) {
-                startActivity(videoIntent);
-            }
-        }
     }
 
     /**
